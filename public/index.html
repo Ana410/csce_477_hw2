@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Account Login</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+      }
+
+      body {
+        align-items: center;
+        background: #f4f6f8;
+        display: flex;
+        justify-content: center;
+        min-height: 100vh;
+        margin: 0;
+      }
+
+      .account-card {
+        background: #ffffff;
+        border-radius: 8px;
+        box-shadow: 0 8px 24px rgb(0 0 0 / 10%);
+        padding: 2rem;
+        width: min(100% - 2rem, 24rem);
+      }
+
+      h1 {
+        margin-top: 0;
+      }
+
+      .tabs {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+      }
+
+      .tab {
+        background: #e8edf2;
+        color: #172b4d;
+        margin-top: 0;
+      }
+
+      .tab.active {
+        background: #1769aa;
+        color: #ffffff;
+      }
+
+      label {
+        display: block;
+        font-weight: 600;
+        margin: 1rem 0 0.35rem;
+      }
+
+      input {
+        border: 1px solid #b8c0c8;
+        border-radius: 4px;
+        box-sizing: border-box;
+        font: inherit;
+        padding: 0.65rem;
+        width: 100%;
+      }
+
+      button {
+        background: #1769aa;
+        border: 0;
+        border-radius: 4px;
+        color: #ffffff;
+        cursor: pointer;
+        font: inherit;
+        font-weight: 600;
+        margin-top: 1.25rem;
+        padding: 0.7rem;
+        width: 100%;
+      }
+
+      button:hover {
+        background: #12558a;
+      }
+
+      .message {
+        margin-bottom: 0;
+      }
+
+      .error {
+        color: #b42318;
+      }
+
+      .success {
+        color: #087443;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="account-card">
+      <h1 id="form-title">Log in</h1>
+      <div class="tabs">
+        <button class="tab active" data-mode="login" type="button">Log in</button>
+        <button class="tab" data-mode="create-account" type="button">
+          Create account
+        </button>
+      </div>
+
+      <form id="account-form" novalidate>
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" autocomplete="email" />
+
+        <label for="password">Password</label>
+        <input
+          id="password"
+          name="password"
+          type="password"
+          autocomplete="current-password"
+        />
+
+        <div id="confirmation-field" hidden>
+          <label for="confirm-password">Confirm password</label>
+          <input id="confirm-password" type="password" autocomplete="new-password" />
+        </div>
+
+        <button id="submit-button" type="submit">Log in</button>
+        <p id="message" class="message" role="alert"></p>
+      </form>
+    </main>
+
+    <script>
+      const form = document.querySelector("#account-form");
+      const emailInput = document.querySelector("#email");
+      const passwordInput = document.querySelector("#password");
+      const confirmPasswordInput = document.querySelector("#confirm-password");
+      const confirmationField = document.querySelector("#confirmation-field");
+      const formTitle = document.querySelector("#form-title");
+      const submitButton = document.querySelector("#submit-button");
+      const message = document.querySelector("#message");
+      let mode = "login";
+
+      function validateCredentials(email, password) {
+        const errors = [];
+
+        if (!email || !password) {
+          errors.push("Email and password are required.");
+        } else {
+          if (!email.includes("@")) {
+            errors.push("Email must contain '@'.");
+          }
+
+          if (password.length < 8) {
+            errors.push("Password must be at least 8 characters.");
+          }
+        }
+
+        return errors;
+      }
+
+      function setMode(nextMode) {
+        mode = nextMode;
+        const creatingAccount = mode === "create-account";
+        formTitle.textContent = creatingAccount ? "Create account" : "Log in";
+        submitButton.textContent = creatingAccount ? "Create account" : "Log in";
+        confirmationField.hidden = !creatingAccount;
+        document.querySelectorAll(".tab").forEach((tab) => {
+          tab.classList.toggle("active", tab.dataset.mode === mode);
+        });
+        message.textContent = "";
+        message.className = "message";
+      }
+
+      document.querySelectorAll(".tab").forEach((tab) => {
+        tab.addEventListener("click", () => setMode(tab.dataset.mode));
+      });
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        message.className = "message";
+        message.textContent = "";
+
+        const email = emailInput.value.trim();
+        const password = passwordInput.value;
+        const errors = validateCredentials(email, password);
+
+        if (mode === "create-account" && password !== confirmPasswordInput.value) {
+          errors.push("Passwords must match.");
+        }
+
+        if (errors.length) {
+          message.classList.add("error");
+          message.textContent = errors.join(" ");
+          return;
+        }
+
+        try {
+          const response = await fetch(`/${mode}`, {
+            body: new URLSearchParams({ email, password }),
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            method: "POST",
+          });
+          const result = await response.json();
+
+          if (!response.ok) {
+            throw new Error(result.errors.join(" "));
+          }
+
+          if (mode === "create-account") {
+            setMode("login");
+          }
+          message.classList.add("success");
+          message.textContent = result.message;
+        } catch (error) {
+          message.classList.add("error");
+          message.textContent = error.message || "Unable to process the request.";
+        }
+      });
+    </script>
+  </body>
+</html>
